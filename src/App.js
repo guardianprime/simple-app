@@ -31,6 +31,7 @@ function App() {
   )
 }
 
+
 function SearchInput() {
   const [search, setSearch] = useState("");
   const [quote, setQuote] = useState([]);
@@ -40,24 +41,20 @@ function SearchInput() {
   const [generateText, setGenerateText] = useState(false);
 
   function handleSearch(e) {
-    const value = e.target.value.toLowerCase().trim()
+    const value = e.target.value.toLowerCase().trim();
     setSearch(value);
   }
 
   function handleGeneration() {
-    if (!search) {
-      setGenerate(true);
-      console.log("generating.....");
-    }
+    setGenerate(true);
   }
 
   function handleSearchAgain() {
     setGenerateText(true);
-    console.log("searching again");
   }
 
   useEffect(() => {
-    if (!search) return;
+    if (!search && !generateText) return;
     const controller = new AbortController();
     async function fetchQuote() {
       try {
@@ -95,10 +92,20 @@ function SearchInput() {
 
   useEffect(() => {
     async function generateRandom() {
-      const res = await fetch(`https://api.api-ninjas.com/v1/quotes`, { headers: { 'X-Api-Key': KEY } });
-      const data = await res.json();
-      setQuote(data);
-      setGenerate(false);
+      try {
+        setIsLoading(true);
+        setError("");
+        const res = await fetch(`https://api.api-ninjas.com/v1/quotes`, { headers: { 'X-Api-Key': KEY } });
+        if (!res.ok) throw new Error("Failed to fetch random quote");
+        const data = await res.json();
+
+        setQuote(data);
+      } catch (err) {
+        setError("Failed to fetch random quote");
+      } finally {
+        setIsLoading(false);
+        setGenerate(false);
+      }
     }
     if (generate) {
       generateRandom();
@@ -116,11 +123,11 @@ function SearchInput() {
             </span>
           </div>
         </div>
-        <button onClick={() => search.length > 2 ? handleSearchAgain() : handleGeneration()}>
+        <button onClick={search.length > 2 ? handleSearchAgain : handleGeneration}>
           Generate {search.length > 2 ? "more" : "random"}
         </button>
       </div>
-      {(search || generateText || generate) && (
+      {(search || generateText || !generate) && (
         <div className="fetch-quote">
           {isLoading ? "Loading........" :
             (error ? <p>{error}</p> :
