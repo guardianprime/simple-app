@@ -40,7 +40,8 @@ function SearchInput() {
   const [generateText, setGenerateText] = useState(false);
 
   function handleSearch(e) {
-    setSearch(e.target.value);
+    const value = e.target.value.toLowerCase().trim()
+    setSearch(value);
   }
 
   function handleGeneration() {
