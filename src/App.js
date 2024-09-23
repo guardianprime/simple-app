@@ -31,7 +31,6 @@ function App() {
   )
 }
 
-
 function SearchInput() {
   const [search, setSearch] = useState("");
   const [quote, setQuote] = useState([]);
@@ -45,9 +44,10 @@ function SearchInput() {
   }
 
   function handleGeneration() {
-    if (search) return;
-    setGenerate(true);
-    console.log("generating.....");
+    if (!search) {
+      setGenerate(true);
+      console.log("generating.....");
+    }
   }
 
   function handleSearchAgain() {
@@ -58,7 +58,7 @@ function SearchInput() {
   useEffect(() => {
     if (!search) return;
     const controller = new AbortController();
-    async function Search() {
+    async function fetchQuote() {
       try {
         setIsLoading(true);
         setError("");
@@ -73,9 +73,6 @@ function SearchInput() {
 
         if (data.Response === "False" || data.length === 0) throw new Error("Quote not found. Try words like 'happiness', 'success', 'money'");
         setQuote(data);
-
-        console.log(data);
-        setError("");
       } catch (err) {
         if (err.name !== "AbortError") {
           setError(err.message);
@@ -85,14 +82,13 @@ function SearchInput() {
       }
     }
 
-    Search();
+    fetchQuote();
     if (generateText) {
-      Search();
+      fetchQuote();
       setGenerateText(false);
     }
     return () => {
       controller.abort();
-      setQuote([]);
     };
   }, [search, generateText]);
 
@@ -111,44 +107,64 @@ function SearchInput() {
   return (
     <div className="fetch-container">
       <div className="search-container">
-        <input type="text" value={search} onChange={handleSearch} />
-        <button onClick={search.length > 2 && !error ? handleSearchAgain : handleGeneration}>
-          Generate {search.length > 2 && !error ? "more" : "random"}
+        <div className="wrapper-search">
+          <div className="box">
+            <input type="text" value={search} onChange={handleSearch} placeholder="search...." />
+            <span>
+              <i className="fa-solid fa-magnifying-glass"></i>
+            </span>
+          </div>
+        </div>
+        <button onClick={() => search.length > 2 ? handleSearchAgain() : handleGeneration()}>
+          Generate {search.length > 2 ? "more" : "random"}
         </button>
       </div>
-      <div className="fetch-quote">
-        {isLoading ? "Loading........" :
-          (error ? <p>{error}</p> :
-            <ul className="result">
-              {quote.map((item, index) => <ResultQuotes key={index} item={item} />)}
-            </ul>)}
-      </div>
+      {(search || generateText || generate) && (
+        <div className="fetch-quote">
+          {isLoading ? "Loading........" :
+            (error ? <p>{error}</p> :
+              <ul className="result">
+                {quote.map((item, index) => <ResultQuotes key={index} item={item} />)}
+              </ul>)}
+        </div>
+      )}
     </div>
   );
 }
 
-
-
-
 function ResultQuotes({ item }) {
   return (
     <li>
-      <p>{item.quote}</p>
-      <p><span>Category: {item.category}</span><span>Author: {item.author}</span></p>
+      <p className="quote">
+        <span><i className="fa-solid fa-quote-left"></i></span>
+        {item.quote}
+        <span><i className="fa-solid fa-quote-right"></i></span>
+      </p>
+      <p className="category">- {item.category}</p>
+      <h5 className="author">{item.author}</h5>
     </li>
   )
 }
 
 function RandomQuote() {
   const [randomQuote, setRandomQuote] = useState([]);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     async function NewFetch() {
-      const res = await fetch(`https://api.api-ninjas.com/v1/quotes`, { headers: { 'X-Api-Key': KEY } });
-      const data = await res.json();
-      setRandomQuote(data);
+      try {
+        const res = await fetch(`https://api.api-ninjas.com/v1/quotes`, { headers: { 'X-Api-Key': KEY } });
+        if (!res.ok) {
+          throw new Error("Failed to fetch quotes");
+        }
+        const data = await res.json();
+        setRandomQuote(data);
+      } catch (err) {
+        setError(err.message);
+      }
     }
 
+    NewFetch(); // Initial fetch
     const intervalId = setInterval(NewFetch, 30000);
 
     // Cleanup interval on component unmount
@@ -156,16 +172,24 @@ function RandomQuote() {
   }, []);
 
   return (
-    <div>
-      <ul>
-        {randomQuote.map((item, index) => (
-          <li key={index}>
-            <p>{item.quote}</p>
-            <p>{item.category}</p>
-            <h5>{item.author}</h5>
-          </li>
-        ))}
-      </ul>
+    <div className="quote-container">
+      {error ? (
+        <p className="error">{error}</p>
+      ) : (
+        <ul>
+          {randomQuote.map((item, index) => (
+            <li key={index}>
+              <p className="quote">
+                <span><i className="fa-solid fa-quote-left"></i></span>
+                {item.quote}
+                <span><i className="fa-solid fa-quote-right"></i></span>
+              </p>
+              <p className="category">- {item.category}</p>
+              <h5 className="author">{item.author}</h5>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
